@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公园里 · 产品demo</title>
+<style>
+  :root{
+    --cream:#FFFFFF;
+    --cream-deep:#F1F2F6;
+    --ink:#16151C;
+    --ink-soft:#67636F;
+    --warmgray:#A6A3AF;
+    --blush:#FF6FA0;
+    --blush-deep:#E14D82;
+    --jade:#34C77B;
+    --jade-deep:#1F9E5D;
+    --gold:#FFC93C;
+    --gold-deep:#E0A400;
+    --purple:#9B6BFF;
+    --purple-deep:#7B45E0;
+    --blue:#4FA6FF;
+    --blue-deep:#2E86E8;
+    --orb-blue:#4FA6FF;
+    --orb-pink:#FF6FA0;
+    --orb-cream:#FFD84D;
+    --card:#FFFFFF;
+    --shadow-card:0 12px 30px -14px rgba(22,21,28,0.16), 0 2px 6px rgba(22,21,28,0.05);
+    --shadow-chip:0 10px 18px -8px rgba(22,21,28,0.22), 0 2px 4px rgba(22,21,28,0.06);
+    --serif:"Songti SC","STSong","Noto Serif SC",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:#EDEEF2;
+    font-family:var(--sans);
+    display:flex;
+    justify-content:center;
+    padding:40px 16px;
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .stage{display:flex;flex-direction:column;align-items:center;gap:18px;}
+  .stage-label{font-family:var(--serif);font-size:13px;letter-spacing:2px;color:var(--warmgray);}
+
+  .phone{
+    width:390px;
+    height:844px;
+    background:var(--cream);
+    border-radius:46px;
+    border:10px solid var(--ink);
+    position:relative;
+    overflow:hidden;
+    box-shadow:0 30px 60px rgba(0,0,0,0.25);
+  }
+  .notch{
+    position:absolute;
+    top:0;left:50%;transform:translateX(-50%);
+    width:120px;height:26px;
+    background:var(--ink);
+    border-radius:0 0 16px 16px;
+    z-index:50;
+  }
+
+  .screen{
+    position:absolute;inset:0;
+    padding:52px 20px 96px;
+    overflow-y:auto;
+    display:none;
+  }
+  .screen.active{display:block;}
+
+  .topbar{
+    display:flex;justify-content:space-between;align-items:flex-start;
+    margin-bottom:6px;
+    position:relative;z-index:2;
+  }
+  .topbar .title{
+    font-family:var(--serif);
+    font-size:26px;font-weight:700;
+    line-height:1.1;
+  }
+  .topbar .date{
+    font-size:12px;color:var(--warmgray);margin-top:4px;
+  }
+  .avatar{
+    width:34px;height:34px;border-radius:50%;
+    background:linear-gradient(135deg,var(--orb-blue),var(--orb-pink) 55%,var(--orb-cream));
+    box-shadow:var(--shadow-chip);
+  }
+
+  .orb-wrap{
+    display:flex;flex-direction:column;align-items:center;
+    margin:22px 0 6px;
+    position:relative;
+  }
+  .orb-field{position:relative;width:230px;height:230px;display:flex;align-items:center;justify-content:center;}
+  .float-dot{
+    position:absolute;border-radius:50%;opacity:0.55;
+    animation:floaty 6s ease-in-out infinite;
+  }
+  @keyframes floaty{
+    0%,100%{transform:translateY(0);}
+    50%{transform:translateY(-10px);}
+  }
+  .orb-shape{
+    width:200px;height:200px;position:relative;
+    border-radius:58% 42% 60% 40% / 55% 45% 55% 45%;
+    background:radial-gradient(circle at 30% 26%, #FFF3B0 0%, #FFD84D 22%, #34C77B 48%, #4FA6FF 74%, #FF6FA0 100%);
+    animation:morph 8s ease-in-out infinite, hueShift 16s linear infinite;
+    box-shadow:
+      0 0 60px 6px rgba(52,199,123,0.30),
+      0 0 44px 4px rgba(255,111,160,0.28),
+      0 28px 34px -14px rgba(0,0,0,0.22);
+    cursor:pointer;
+  }
+  .orb-shape::before{
+    content:'';position:absolute;top:14%;left:18%;width:36%;height:26%;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,0.9), rgba(255,255,255,0) 72%);
+    filter:blur(1px);
+  }
+  .orb-shape::after{
+    content:'';position:absolute;inset:0;border-radius:inherit;
+    box-shadow:inset 0 -16px 30px rgba(0,0,0,0.10), inset 0 12px 20px rgba(255,255,255,0.35);
+  }
+  @keyframes morph{
+    0%,100%{border-radius:58% 42% 60% 40% / 55% 45% 55% 45%;}
+    33%{border-radius:45% 55% 48% 52% / 60% 40% 55% 45%;}
+    66%{border-radius:52% 48% 40% 60% / 45% 55% 42% 58%;}
+  }
+  @keyframes hueShift{
+    0%{filter:hue-rotate(0deg);}
+    100%{filter:hue-rotate(360deg);}
+  }
+  .orb-shape.poked{animation:morph 8s ease-in-out infinite, hueShift 16s linear infinite, pokePulse .7s ease;}
+  @keyframes pokePulse{
+    0%{transform:scale(1);}
+    40%{transform:scale(1.08);}
+    100%{transform:scale(1);}
+  }
+
+  .status-text{
+    margin-top:14px;font-size:14px;color:var(--ink-soft);
+    text-align:center;min-height:20px;
+    transition:opacity .4s ease;
+  }
+  .progress-row{
+    width:100%;display:flex;align-items:center;gap:8px;margin-top:10px;
+  }
+  .progress-track{
+    flex:1;height:8px;border-radius:6px;background:var(--cream-deep);overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;border-radius:6px;
+    background:linear-gradient(90deg,var(--jade),var(--blue),var(--blush));
+    width:62%;
+  }
+  .progress-num{font-size:11px;color:var(--warmgray);min-width:30px;text-align:right;}
+
+  .card{
+    background:var(--card);
+    border-radius:22px;
+    padding:16px 16px 14px;
+    margin-top:14px;
+    box-shadow:var(--shadow-card);
+  }
+  .card h3{
+    font-family:var(--serif);
+    font-size:15px;font-weight:700;margin-bottom:12px;
+  }
+
+  .energy-collage{
+    display:flex;gap:9px;justify-content:space-between;padding-top:4px;
+  }
+  .energy-chip{
+    position:relative;width:58px;height:96px;border-radius:20px;
+    background:var(--cream-deep);overflow:hidden;
+    box-shadow:var(--shadow-chip);
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  }
+  .energy-chip:nth-child(1){transform:rotate(-4deg);}
+  .energy-chip:nth-child(2){transform:rotate(2deg);}
+  .energy-chip:nth-child(3){transform:rotate(-2deg);}
+  .energy-chip:nth-child(4){transform:rotate(3deg);}
+  .energy-chip:nth-child(5){transform:rotate(-3deg);}
+  .energy-fill{
+    position:absolute;bottom:0;left:0;right:0;
+    border-radius:0 0 20px 20px;
+  }
+  .energy-icon{
+    position:relative;z-index:2;width:26px;height:26px;border-radius:50%;
+    background:rgba(255,255,255,0.92);
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;margin-bottom:8px;
+  }
+  .energy-badge{
+    position:absolute;top:-6px;right:-6px;
+    background:var(--ink);color:#fff;font-size:9px;font-weight:700;
+    padding:3px 7px;border-radius:20px;
+    box-shadow:0 4px 8px rgba(0,0,0,0.25);
+    z-index:3;
+  }
+  .energy-labels{display:flex;justify-content:space-between;margin-top:10px;}
+  .energy-labels span{flex:1;text-align:center;font-size:9.5px;color:var(--warmgray);}
+
+  .nearby-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:9px 0;border-bottom:1px solid rgba(22,21,28,0.06);
+  }
+  .nearby-item:last-child{border-bottom:none;}
+  .nearby-main .n-title{font-size:13px;font-weight:600;}
+  .nearby-main .n-sub{font-size:11px;color:var(--warmgray);margin-top:2px;}
+  .n-tag{
+    font-size:10px;padding:6px 12px;border-radius:20px;white-space:nowrap;font-weight:600;
+    box-shadow:var(--shadow-chip);
+  }
+
+  .tabbar{
+    position:absolute;bottom:0;left:0;right:0;
+    height:78px;
+    background:var(--cream);
+    box-shadow:0 -8px 20px rgba(22,21,28,0.06);
+    display:flex;
+    padding-bottom:14px;
+    z-index:40;
+  }
+  .tab{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+    font-size:11px;color:var(--warmgray);
+    cursor:pointer;
+    background:none;border:none;font-family:var(--sans);
+  }
+  .tab .tab-icon-wrap{
+    width:30px;height:30px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .2s ease;
+  }
+  .tab .tab-icon{width:19px;height:19px;}
+  .tab.active{color:var(--ink);font-weight:600;}
+  .tab.active .tab-icon-wrap{background:var(--tab-c,var(--blush));}
+  .tab.active .tab-icon-wrap svg{stroke:#fff;}
+
+  .map-canvas{
+    position:relative;
+    width:100%;
+    border-radius:22px;
+    overflow:hidden;
+    background:var(--cream-deep);
+    margin-top:4px;
+    padding:14px;
+  }
+  .street-label{
+    font-size:10px;color:var(--warmgray);text-align:center;padding:4px 0;letter-spacing:2px;
+  }
+  .gate-row{display:flex;justify-content:space-between;font-size:10px;color:var(--warmgray);padding:0 4px 6px;}
+  .buildings-row{display:flex;gap:10px;align-items:stretch;}
+  .building-card{
+    flex:1;border-radius:20px;padding:14px 10px;
+    display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;
+    box-shadow:var(--shadow-chip);cursor:pointer;
+    transition:transform .15s ease;
+  }
+  .building-card:active{transform:scale(0.96);}
+  .building-card .b-name{font-size:12.5px;font-weight:700;line-height:1.3;}
+  .building-card .b-meta{font-size:10px;color:var(--ink-soft);}
+  .building-card .b-hot{
+    font-size:9.5px;font-weight:700;color:#fff;background:var(--blush-deep);
+    padding:4px 8px;border-radius:20px;
+  }
+  .building-card .b-dots{display:flex;gap:4px;}
+  .building-card .b-dots span{width:7px;height:7px;border-radius:50%;}
+  .b-tap-hint{font-size:9px;color:var(--warmgray);margin-top:2px;}
+
+  .interior-overlay{
+    position:absolute;inset:0;background:rgba(22,21,28,0.4);
+    display:flex;align-items:flex-end;
+    opacity:0;pointer-events:none;transition:opacity .25s ease;
+    z-index:70;
+  }
+  .interior-overlay.open{opacity:1;pointer-events:auto;}
+  .interior-panel{
+    background:var(--cream);
+    width:100%;height:88%;border-radius:26px 26px 0 0;
+    padding:18px 18px 20px;
+    display:flex;flex-direction:column;
+    transform:translateY(100%);
+    transition:transform .32s ease;
+  }
+  .interior-overlay.open .interior-panel{transform:translateY(0);}
+  .interior-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .interior-head .i-title{font-family:var(--serif);font-size:18px;font-weight:700;}
+  .interior-head .i-sub{font-size:11px;color:var(--warmgray);margin-top:2px;}
+  .sheet-close{
+    width:26px;height:26px;border-radius:50%;
+    background:var(--cream-deep);border:none;
+    font-size:14px;cursor:pointer;flex-shrink:0;
+  }
+  .floor-tabs{display:flex;gap:8px;margin:8px 0 14px;}
+  .floor-tab{
+    padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;
+    background:var(--cream-deep);color:var(--ink-soft);border:none;cursor:pointer;
+  }
+  .floor-tab.active{background:var(--ink);color:#fff;}
+  .shop-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:6px;}
+  .shop-card{
+    position:relative;
+    display:flex;align-items:center;gap:10px;
+    background:var(--cream-deep);border-radius:16px;padding:10px 12px;
+  }
+  .shop-icon{
+    width:36px;height:36px;border-radius:50%;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+  }
+  .shop-info{flex:1;min-width:0;}
+  .shop-name{font-size:12.5px;font-weight:600;line-height:1.3;}
+  .shop-sub{font-size:10.5px;color:var(--warmgray);margin-top:2px;}
+  .shop-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;}
+  .queue-dots{display:flex;gap:3px;}
+  .queue-dots span{width:6px;height:6px;border-radius:50%;background:rgba(22,21,28,0.12);}
+  .queue-dots span.on{background:var(--blush-deep);}
+  .idle-pill{font-size:9.5px;color:var(--jade-deep);font-weight:700;}
+  .discount-tag{
+    font-size:9px;font-weight:700;color:#fff;background:var(--ink);
+    padding:3px 8px;border-radius:20px;white-space:nowrap;
+  }
+
+  .sheet-overlay{
+    position:absolute;inset:0;background:rgba(22,21,28,0.4);
+    display:flex;align-items:flex-end;
+    opacity:0;pointer-events:none;transition:opacity .25s ease;
+    z-index:60;
+  }
+  .sheet-overlay.open{opacity:1;pointer-events:auto;}
+  .sheet{
+    background:var(--card);
+    width:100%;border-radius:24px 24px 0 0;
+    padding:22px 20px 30px;
+    transform:translateY(100%);
+    transition:transform .3s ease;
+  }
+  .sheet-overlay.open .sheet{transform:translateY(0);}
+
+  .coop-visual{
+    display:flex;align-items:center;justify-content:center;gap:18px;
+    margin:18px 0;height:90px;position:relative;
+  }
+  .mini-orb{
+    width:56px;height:56px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,var(--orb-cream),var(--orb-blue) 55%,var(--orb-pink));
+    transition:transform .6s ease;
+    box-shadow:var(--shadow-chip);
+  }
+  .coop-visual.linked .mini-orb.left{transform:translateX(26px);}
+  .coop-visual.linked .mini-orb.right{transform:translateX(-26px);}
+  .coop-line{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scaleX(0);
+    width:40px;height:2px;background:var(--gold);
+    transition:transform .4s ease .5s;
+  }
+  .coop-visual.linked .coop-line{transform:translate(-50%,-50%) scaleX(1);}
+  .coop-status{text-align:center;font-size:13px;color:var(--ink-soft);min-height:36px;}
+  .btn{
+    display:block;width:100%;padding:13px;border-radius:16px;border:none;
+    background:var(--ink);color:#fff;font-size:13px;font-weight:600;
+    cursor:pointer;margin-top:14px;font-family:var(--sans);
+    box-shadow:var(--shadow-chip);
+  }
+  .btn.secondary{background:var(--cream-deep);color:var(--ink);box-shadow:none;}
+  .btn:disabled{opacity:0.4;cursor:default;}
+
+  .month-head{display:flex;justify-content:space-between;align-items:center;margin-top:4px;}
+  .month-head .m-title{font-family:var(--serif);font-size:20px;font-weight:700;}
+  .weekday-row{display:grid;grid-template-columns:repeat(7,1fr);margin-top:16px;}
+  .weekday-row span{font-size:10px;color:var(--warmgray);text-align:center;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:8px;}
+  .cal-cell{
+    aspect-ratio:1;border-radius:14px;background:var(--cream-deep);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    font-size:10px;color:var(--warmgray);position:relative;
+  }
+  .cal-cell.has-activity{box-shadow:var(--shadow-chip);}
+  .cal-dot{width:8px;height:8px;border-radius:50%;}
+  .cal-num{font-size:9px;}
+  .summary-card p{font-size:13px;line-height:1.9;color:var(--ink-soft);}
+  .summary-card strong{color:var(--ink);}
+
+  .me-hero{display:flex;flex-direction:column;align-items:center;margin-top:10px;text-align:center;}
+  .me-hero .bear{
+    width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle at 32% 28%,var(--orb-cream),var(--orb-blue) 55%,var(--orb-pink) 100%);
+    margin-bottom:14px;
+    box-shadow:0 0 40px 6px rgba(255,111,160,0.25), 0 20px 26px -12px rgba(0,0,0,0.2);
+  }
+  .me-hero .m-name{font-family:var(--serif);font-size:19px;font-weight:700;}
+  .me-hero .m-tag{font-size:12px;color:var(--warmgray);margin-top:4px;}
+  .me-list .m-row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:13px 4px;border-bottom:1px solid rgba(22,21,28,0.06);font-size:13px;
+  }
+  .me-list .m-row:last-child{border-bottom:none;}
+  .m-row .m-val{color:var(--warmgray);font-size:12px;}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="stage-label">「公园里」数字伙伴养成系统 — 交互demo</div>
+  <div class="phone">
+    <div class="notch"></div>
+
+    <div class="screen active" id="screen-home">
+      <div class="topbar">
+        <div>
+          <div class="title">今天</div>
+          <div class="date">7月20日 · 周一</div>
+        </div>
+        <div class="avatar"></div>
+      </div>
+
+      <div class="orb-wrap">
+        <div class="orb-field">
+          <div class="float-dot" style="width:10px;height:10px;background:var(--gold);top:6px;left:18px;animation-delay:0s;"></div>
+          <div class="float-dot" style="width:7px;height:7px;background:var(--blush);top:30px;right:8px;animation-delay:1.2s;"></div>
+          <div class="float-dot" style="width:8px;height:8px;background:var(--blue);bottom:14px;left:4px;animation-delay:2.1s;"></div>
+          <div class="float-dot" style="width:6px;height:6px;background:var(--jade);bottom:26px;right:20px;animation-delay:0.6s;"></div>
+          <div class="orb-shape" id="orb"></div>
+        </div>
+        <div class="status-text" id="statusText">它今天有一点好奇</div>
+        <div class="progress-row">
+          <div class="progress-track"><div class="progress-fill"></div></div>
+          <div class="progress-num">62%</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>今日成长</h3>
+        <div class="energy-collage">
+          <div class="energy-chip">
+            <div class="energy-badge">+45</div>
+            <div class="energy-icon" style="color:var(--blush-deep);">生</div>
+            <div class="energy-fill" style="height:70%;background:linear-gradient(180deg,#FFB3CE,var(--blush-deep));"></div>
+          </div>
+          <div class="energy-chip">
+            <div class="energy-badge">+20</div>
+            <div class="energy-icon" style="color:var(--blue-deep);">陪</div>
+            <div class="energy-fill" style="height:40%;background:linear-gradient(180deg,#BFE0FF,var(--blue-deep));"></div>
+          </div>
+          <div class="energy-chip">
+            <div class="energy-badge">+60</div>
+            <div class="energy-icon" style="color:var(--jade-deep);">探</div>
+            <div class="energy-fill" style="height:85%;background:linear-gradient(180deg,#A6EFC7,var(--jade-deep));"></div>
+          </div>
+          <div class="energy-chip">
+            <div class="energy-badge">+15</div>
+            <div class="energy-icon" style="color:var(--gold-deep);">艺</div>
+            <div class="energy-fill" style="height:30%;background:linear-gradient(180deg,#FFE79A,var(--gold-deep));"></div>
+          </div>
+          <div class="energy-chip">
+            <div class="energy-badge">+8</div>
+            <div class="energy-icon" style="color:var(--purple-deep);">连</div>
+            <div class="energy-fill" style="height:18%;background:linear-gradient(180deg,#D9C7FF,var(--purple-deep));"></div>
+          </div>
+        </div>
+        <div class="energy-labels">
+          <span>生活</span><span>陪伴</span><span>探索</span><span>艺术</span><span>连接</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>附近正在发生</h3>
+        <div class="nearby-item">
+          <div class="nearby-main">
+            <div class="n-title">云朵熊 · 雕塑</div>
+            <div class="n-sub">距你 80 米 · 正等待第二位参与者</div>
+          </div>
+          <div class="n-tag" style="background:var(--jade);color:#fff;" onclick="openCoop()">去唤醒</div>
+        </div>
+        <div class="nearby-item">
+          <div class="nearby-main">
+            <div class="n-title">安壮壮无限自助烤肉</div>
+            <div class="n-sub">排队5桌 · 预计等待35分钟</div>
+          </div>
+          <div class="n-tag" style="background:var(--cream-deep);color:var(--ink-soft);" onclick="jumpToMap()">查看</div>
+        </div>
+        <div class="nearby-item">
+          <div class="nearby-main">
+            <div class="n-title">共同打卡活动</div>
+            <div class="n-sub">今日已有 12 组伙伴完成协作</div>
+          </div>
+          <div class="n-tag" style="background:var(--blush);color:#fff;">加入</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-map">
+      <div class="topbar">
+        <div><div class="title">地图</div><div class="date">朗悦公园里商圈</div></div>
+        <div class="avatar"></div>
+      </div>
+      <div class="map-canvas">
+        <div class="street-label">国槐路 · 国槐街</div>
+        <div class="gate-row"><span>◐ 北门</span><span>石楠路 · 东门 ◑</span></div>
+        <div class="buildings-row" id="buildingsRow"></div>
+        <div class="street-label" style="margin-top:10px;">藤松里</div>
+      </div>
+      <div class="card">
+        <h3>商圈热度</h3>
+        <div style="font-size:12px;color:var(--ink-soft);line-height:2;">
+          点击任意商场卡片，查看楼层分布与各店铺的实时排队、优惠信息。
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-record">
+      <div class="topbar">
+        <div><div class="title">记录</div><div class="date">成长档案</div></div>
+        <div class="avatar"></div>
+      </div>
+      <div class="month-head">
+        <div class="m-title">2026年7月</div>
+        <div style="font-size:12px;color:var(--warmgray);">已来 8 次</div>
+      </div>
+      <div class="weekday-row">
+        <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="card summary-card">
+        <h3>本月小结</h3>
+        <p>
+          本月来到「公园里」<strong>8</strong> 次<br>
+          共同唤醒雕塑 <strong>5</strong> 次<br>
+          停留总时长 <strong>6小时20分</strong><br>
+          发现 <strong>7</strong> 家商户<br>
+          你的伙伴正在形成「<strong>安静探索型</strong>」性格
+        </p>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-me">
+      <div class="topbar">
+        <div><div class="title">我的</div><div class="date">账户与设置</div></div>
+        <div class="avatar"></div>
+      </div>
+      <div class="me-hero">
+        <div class="bear"></div>
+        <div class="m-name">安静探索型 · 熊</div>
+        <div class="m-tag">与你共同生活 42 天</div>
+      </div>
+      <div class="card me-list">
+        <div class="m-row"><span>累计能量</span><span class="m-val">3,280</span></div>
+        <div class="m-row"><span>共同唤醒雕塑</span><span class="m-val">12 次</span></div>
+        <div class="m-row"><span>社区徽章</span><span class="m-val">6 枚</span></div>
+        <div class="m-row"><span>消息通知</span><span class="m-val">开启</span></div>
+        <div class="m-row"><span>关于公园里</span><span class="m-val">›</span></div>
+      </div>
+    </div>
+
+    <div class="tabbar">
+      <button class="tab active" data-screen="home" style="--tab-c:var(--blush);">
+        <span class="tab-icon-wrap"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="7"/></svg></span>
+        伙伴
+      </button>
+      <button class="tab" data-screen="map" style="--tab-c:var(--blue);">
+        <span class="tab-icon-wrap"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2z"/></svg></span>
+        地图
+      </button>
+      <button class="tab" data-screen="record" style="--tab-c:var(--jade);">
+        <span class="tab-icon-wrap"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg></span>
+        记录
+      </button>
+      <button class="tab" data-screen="me" style="--tab-c:var(--purple);">
+        <span class="tab-icon-wrap"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/></svg></span>
+        我的
+      </button>
+    </div>
+
+    <div class="sheet-overlay" id="coopOverlay">
+      <div class="sheet">
+        <button class="sheet-close" onclick="closeCoop()" style="float:right;">✕</button>
+        <h3 style="font-family:var(--serif);font-size:16px;">云朵熊 · 共同唤醒</h3>
+        <div class="coop-visual" id="coopVisual">
+          <div class="mini-orb left"></div>
+          <div class="coop-line"></div>
+          <div class="mini-orb right"></div>
+        </div>
+        <div class="coop-status" id="coopStatus">已感应到雕塑<br>还需要一位伙伴共同唤醒</div>
+        <button class="btn" id="coopBtn" onclick="simulateJoin()">模拟第二位伙伴加入</button>
+      </div>
+    </div>
+
+    <div class="interior-overlay" id="interiorOverlay">
+      <div class="interior-panel">
+        <div class="interior-head">
+          <div>
+            <div class="i-title" id="interiorTitle">大里坊</div>
+            <div class="i-sub" id="interiorSub">12 家店铺</div>
+          </div>
+          <button class="sheet-close" onclick="closeInterior()">✕</button>
+        </div>
+        <div class="floor-tabs" id="floorTabs"></div>
+        <div class="shop-list" id="shopList"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const screens = {
+    home: document.getElementById('screen-home'),
+    map: document.getElementById('screen-map'),
+    record: document.getElementById('screen-record'),
+    me: document.getElementById('screen-me'),
+  };
+  function showScreen(name){
+    tabs.forEach(x=>x.classList.toggle('active', x.dataset.screen===name));
+    Object.entries(screens).forEach(([k,s])=>s.classList.toggle('active', k===name));
+  }
+  tabs.forEach(t=> t.addEventListener('click',()=> showScreen(t.dataset.screen)));
+  function jumpToMap(){ showScreen('map'); }
+
+  const statusLines = [
+    "它今天有一点好奇",
+    "它感受到附近有新的声音",
+    "再积累120点能量，它可能会发生变化",
+    "它安静地翻了个身"
+  ];
+  let statusIdx = 0;
+  const statusEl = document.getElementById('statusText');
+  setInterval(()=>{
+    statusIdx = (statusIdx+1) % statusLines.length;
+    statusEl.style.opacity = 0;
+    setTimeout(()=>{
+      statusEl.textContent = statusLines[statusIdx];
+      statusEl.style.opacity = 1;
+    },350);
+  },4000);
+
+  const orb = document.getElementById('orb');
+  orb.addEventListener('click',()=>{
+    orb.classList.remove('poked');
+    void orb.offsetWidth;
+    orb.classList.add('poked');
+  });
+
+  function openCoop(){ document.getElementById('coopOverlay').classList.add('open'); }
+  function closeCoop(){
+    document.getElementById('coopOverlay').classList.remove('open');
+    document.getElementById('coopVisual').classList.remove('linked');
+    document.getElementById('coopStatus').innerHTML = '已感应到雕塑<br>还需要一位伙伴共同唤醒';
+    const btn = document.getElementById('coopBtn');
+    btn.textContent = '模拟第二位伙伴加入';
+    btn.disabled = false;
+    btn.onclick = simulateJoin;
+  }
+  function simulateJoin(){
+    const btn = document.getElementById('coopBtn');
+    btn.disabled = true;
+    document.getElementById('coopStatus').textContent = '第二位伙伴已进入感应范围…';
+    setTimeout(()=>{
+      document.getElementById('coopVisual').classList.add('linked');
+      document.getElementById('coopStatus').innerHTML = '<strong>共同唤醒了一件雕塑。</strong><br>获得连接能量 +30 · 公共艺术徽章 x1';
+      btn.textContent = '完成';
+      btn.disabled = false;
+      btn.onclick = closeCoop;
+    },1100);
+  }
+
+  const calGrid = document.getElementById('calGrid');
+  const activityColors = ['var(--jade)','var(--gold)','var(--blush)','var(--blue)'];
+  const activeDays = new Set([2,3,6,9,13,15,20,24]);
+  for(let i=0;i<2;i++) calGrid.appendChild(document.createElement('div'));
+  for(let d=1; d<=31; d++){
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell';
+    const num = document.createElement('div');
+    num.className = 'cal-num';
+    num.textContent = d;
+    cell.appendChild(num);
+    if(activeDays.has(d)){
+      cell.classList.add('has-activity');
+      const dot = document.createElement('div');
+      dot.className = 'cal-dot';
+      dot.style.background = activityColors[d % activityColors.length];
+      cell.appendChild(dot);
+    }
+    calGrid.appendChild(cell);
+  }
+
+  const CAT = {
+    food:   {label:'食', light:'#FFE3CF', deep:'#E0692B'},
+    retail: {label:'购', light:'#EBE1FF', deep:'#7B45E0'},
+    edu:    {label:'学', light:'#D9F5E4', deep:'#1F9E5D'},
+    service:{label:'居', light:'#DCEEFF', deep:'#2E86E8'},
+    beauty: {label:'美', light:'#FFE0EC', deep:'#E14D82'},
+  };
+
+  const buildings = {
+    dalifang: {
+      name:'大里坊', color:'#DCEBFF',
+      shops:[
+        {name:'华为授权体验店', floor:1, cat:'service', queue:0},
+        {name:'一搏烟酒便利', floor:1, cat:'retail', queue:0},
+        {name:'春藤托育', floor:2, cat:'edu', queue:0},
+        {name:'禧闻Dreams民宿', floor:2, cat:'service', queue:0},
+        {name:'好想来零食乐园', floor:1, cat:'retail', queue:1, wait:'5分钟', tag:'满50减10'},
+        {name:'屹溪买手集合店', floor:1, cat:'retail', queue:0},
+        {name:'六方鲜糟粕醋粉面火锅', floor:1, cat:'food', queue:3, wait:'15分钟'},
+        {name:'臻郑味鲜炒柴公鸡', floor:1, cat:'food', queue:2, wait:'10分钟'},
+        {name:'凯小将线下素养中心', floor:2, cat:'edu', queue:0},
+        {name:'悠佳生鲜', floor:1, cat:'retail', queue:0},
+        {name:'郑州市新途径教育', floor:2, cat:'edu', queue:0},
+        {name:'石域街舞工作室', floor:2, cat:'edu', queue:0},
+        {name:'果太子集团', floor:1, cat:'food', queue:1, wait:'5分钟'},
+        {name:'花千代秘制烤鱼', floor:1, cat:'food', queue:4, wait:'20分钟', tag:'第二份半价'},
+        {name:'范阿坤煲仔饭', floor:1, cat:'food', queue:2, wait:'10分钟'},
+        {name:'明星御谷老碗面', floor:1, cat:'food', queue:1, wait:'5分钟'},
+        {name:'游喜鸡', floor:1, cat:'food', queue:0},
+        {name:'猿始主义跑酷', floor:2, cat:'edu', queue:0},
+        {name:'柘蜇培育钻石体验中心', floor:2, cat:'retail', queue:0},
+        {name:'芝士公考', floor:2, cat:'edu', queue:0},
+        {name:'昇恋音乐钢琴工作室', floor:2, cat:'edu', queue:0},
+        {name:'沪上阿姨精选茶饮', floor:1, cat:'food', queue:2, wait:'8分钟', tag:'第二杯半价'},
+      ]
+    },
+    xili: {
+      name:'朗悦公园里·西里', color:'#F1E4FF',
+      shops:[
+        {name:'国央清书画社', floor:1, cat:'edu', queue:0},
+        {name:'鲜麦打酒站', floor:1, cat:'food', queue:1, wait:'5分钟'},
+        {name:'时影·私影俱乐部', floor:2, cat:'service', queue:0},
+        {name:'三酒肆九', floor:1, cat:'food', queue:2, wait:'10分钟'},
+        {name:'汉谈炸鸡', floor:1, cat:'food', queue:3, wait:'12分钟', tag:'会员9折'},
+        {name:'星姨糖水', floor:1, cat:'food', queue:1, wait:'5分钟'},
+        {name:'很多往事烧烤小酒馆', floor:1, cat:'food', queue:4, wait:'25分钟'},
+        {name:'娜些好运生鲜团购', floor:1, cat:'retail', queue:0},
+        {name:'娜姐鲜货铺', floor:1, cat:'retail', queue:0},
+        {name:'美宜佳便利店', floor:1, cat:'retail', queue:0},
+        {name:'悦来悦喜便利店', floor:1, cat:'retail', queue:0},
+        {name:'小威串串麻辣烫', floor:1, cat:'food', queue:2, wait:'10分钟'},
+        {name:'咪兔cake烘焙工作室', floor:1, cat:'food', queue:1, wait:'5分钟', tag:'新客立减8元'},
+        {name:'百嘉便利店', floor:1, cat:'retail', queue:0},
+        {name:'桂事1978', floor:1, cat:'food', queue:2, wait:'8分钟'},
+      ]
+    },
+    xiduhui: {
+      name:'朗悦西都汇', color:'#DFF6E8',
+      shops:[
+        {name:'悦脑AI智习室', floor:2, cat:'edu', queue:0},
+        {name:'李四辈', floor:1, cat:'food', queue:2, wait:'10分钟'},
+        {name:'耳舒采耳', floor:1, cat:'beauty', queue:1, wait:'8分钟'},
+        {name:'科大讯飞·讯飞英语通AI体验馆', floor:2, cat:'edu', queue:0},
+        {name:'风岛民宿', floor:2, cat:'service', queue:0},
+        {name:'安壮壮无限自助烤肉公园里西里店', floor:1, cat:'food', queue:5, wait:'35分钟', tag:'工作日88元自助'},
+        {name:'加班Bar', floor:2, cat:'food', queue:0},
+        {name:'怡境头疗美容', floor:1, cat:'beauty', queue:1, wait:'10分钟'},
+        {name:'茶百道', floor:1, cat:'food', queue:3, wait:'12分钟', tag:'第二杯半价'},
+        {name:'苏北金湖龙虾', floor:1, cat:'food', queue:2, wait:'15分钟'},
+        {name:'福乐康大药房', floor:1, cat:'service', queue:0},
+        {name:'朗悦公园里招商处', floor:1, cat:'service', queue:0},
+        {name:'花缘花艺工作室', floor:1, cat:'retail', queue:0},
+      ]
+    }
+  };
+
+  const buildingsRow = document.getElementById('buildingsRow');
+  Object.entries(buildings).forEach(([key, b])=>{
+    const hotCount = b.shops.filter(s=>s.queue>=3).length;
+    const cats = [...new Set(b.shops.map(s=>s.cat))].slice(0,4);
+    const card = document.createElement('div');
+    card.className = 'building-card';
+    card.style.background = b.color;
+    card.onclick = ()=>openInterior(key);
+    card.innerHTML = `
+      <div class="b-dots">${cats.map(c=>`<span style="background:${CAT[c].deep}"></span>`).join('')}</div>
+      <div class="b-name">${b.name}</div>
+      <div class="b-meta">${b.shops.length} 家店铺</div>
+      ${hotCount>0 ? `<div class="b-hot">${hotCount}家排队中</div>` : `<div class="b-tap-hint">点击查看</div>`}
+    `;
+    buildingsRow.appendChild(card);
+  });
+
+  let currentBuilding = null;
+  let currentFloor = null;
+  function openInterior(key){
+    currentBuilding = key;
+    const b = buildings[key];
+    document.getElementById('interiorTitle').textContent = b.name;
+    document.getElementById('interiorSub').textContent = b.shops.length + ' 家店铺';
+    const floors = [...new Set(b.shops.map(s=>s.floor))].sort();
+    currentFloor = floors[0];
+    const floorTabs = document.getElementById('floorTabs');
+    floorTabs.innerHTML = '';
+    floors.forEach(f=>{
+      const btn = document.createElement('button');
+      btn.className = 'floor-tab' + (f===currentFloor ? ' active' : '');
+      btn.textContent = f + 'F';
+      btn.onclick = ()=>{
+        currentFloor = f;
+        [...floorTabs.children].forEach(c=>c.classList.remove('active'));
+        btn.classList.add('active');
+        renderShopList();
+      };
+      floorTabs.appendChild(btn);
+    });
+    renderShopList();
+    document.getElementById('interiorOverlay').classList.add('open');
+  }
+  function closeInterior(){
+    document.getElementById('interiorOverlay').classList.remove('open');
+  }
+  function renderShopList(){
+    const b = buildings[currentBuilding];
+    const list = document.getElementById('shopList');
+    list.innerHTML = '';
+    const shops = b.shops.filter(s=>s.floor===currentFloor).sort((a,c)=>c.queue-a.queue);
+    shops.forEach(s=>{
+      const cat = CAT[s.cat];
+      const row = document.createElement('div');
+      row.className = 'shop-card';
+      const queueHtml = s.queue>0
+        ? `<div class="queue-dots">${[0,1,2,3,4].map(i=>`<span class="${i<s.queue?'on':''}"></span>`).join('')}</div><div style="font-size:9.5px;color:var(--ink-soft);">约${s.wait||''}</div>`
+        : `<div class="idle-pill">空闲</div>`;
+      row.innerHTML = `
+        <div class="shop-icon" style="background:${cat.light};color:${cat.deep};">${cat.label}</div>
+        <div class="shop-info">
+          <div class="shop-name">${s.name}</div>
+          <div class="shop-sub">${s.floor}F · ${s.queue>0? '排队' + s.queue + '桌' : '营业中'}</div>
+        </div>
+        <div class="shop-right">
+          ${queueHtml}
+          ${s.tag ? `<div class="discount-tag">${s.tag}</div>` : ''}
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  }
+</script>
+</body>
+</html>
