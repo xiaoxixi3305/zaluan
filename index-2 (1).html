@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>「公园里」Demo · 地图交互更新</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{
+      --viz-panel:#ffffff;--viz-card:#f8fafc;--viz-chip-card:#f3f6f8;--viz-text:#18202b;
+      --viz-muted:#75808f;--viz-border:#dfe5eb;--viz-accent:#5f8f82;--viz-accent-text:#ffffff;
+      --viz-accent-bg:#dfeee9;--viz-accent-bg-subtle:#edf6f3;
+    }
+    *{box-sizing:border-box} body{margin:0;padding:24px;background:#eef1f3;color:var(--viz-text)}
+    .text-muted{color:var(--viz-muted)}
+    .viz-badge{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;background:var(--viz-accent-bg);color:var(--viz-accent);font-size:12px}
+    .viz-callout{border-radius:16px;padding:14px 16px;background:var(--viz-accent-bg-subtle)}
+    .card{border:1px solid var(--viz-border);border-radius:18px;background:var(--viz-panel)}
+    .metric-card{border:1px solid var(--viz-border);border-radius:16px;background:var(--viz-chip-card);padding:14px}
+    .viz-stat-value{margin-top:6px;font-size:24px;font-weight:600}
+  </style>
+</head>
+<body>
+<div id="park-demo-v8" class="w-full">
+  <style>
+    #park-demo-v8{color:var(--viz-text);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    #park-demo-v8 .phone{width:min(100%,390px);aspect-ratio:9/19.5;margin:0 auto;border:1px solid var(--viz-border);border-radius:32px;overflow:hidden;background:var(--viz-panel)}
+    #park-demo-v8 .screen{height:100%;background:var(--viz-panel);display:flex;flex-direction:column;overflow:hidden}
+    #park-demo-v8 .page-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--viz-border) transparent}
+    #park-demo-v8 .page-scroll::-webkit-scrollbar{width:6px}
+    #park-demo-v8 .page-scroll::-webkit-scrollbar-track{background:transparent}
+    #park-demo-v8 .page-scroll::-webkit-scrollbar-thumb{background:var(--viz-border);border-radius:999px}
+    #park-demo-v8 .page{display:none;min-height:100%}
+    #park-demo-v8 .page.active{display:block}
+    #park-demo-v8 .nav-btn{color:var(--viz-muted)}
+    #park-demo-v8 .nav-btn.active{color:var(--viz-accent)}
+    #park-demo-v8 button:disabled{opacity:.48;cursor:not-allowed}
+    #park-demo-v8 .home-orb-wrap{position:relative;width:220px;height:220px;display:grid;place-items:center}
+    #park-demo-v8 .home-orb-haze{position:absolute;width:178px;height:178px;border-radius:50%;background:radial-gradient(circle,rgba(143,203,255,.28),rgba(116,223,213,.13) 48%,transparent 73%);filter:blur(15px);animation:homeHaze 3.8s ease-in-out infinite;pointer-events:none}
+    #park-demo-v8 .home-orb{position:relative;width:154px;height:154px;border:0;border-radius:50%;overflow:visible;background:radial-gradient(circle at 30% 26%,rgba(255,255,255,.95),transparent 20%),radial-gradient(circle at 67% 67%,rgba(245,208,118,.8),transparent 37%),radial-gradient(circle at 30% 72%,rgba(110,213,202,.76),transparent 40%),radial-gradient(circle at 70% 30%,rgba(238,161,195,.76),transparent 38%),rgba(204,217,240,.72);box-shadow:0 18px 45px rgba(66,76,106,.16),0 0 28px rgba(120,190,230,.22);animation:orbBreathe 4.5s ease-in-out infinite;cursor:pointer}
+    #park-demo-v8 .home-orb:before{content:"";position:absolute;inset:-11px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.16),rgba(138,203,255,.1) 48%,transparent 72%);filter:blur(10px);animation:edgeBreathe 3.6s ease-in-out infinite}
+    #park-demo-v8 .home-orb:after{content:"";position:absolute;inset:8%;border-radius:43% 57% 61% 39%;background:rgba(255,255,255,.25);filter:blur(13px);animation:spin 7s linear infinite}
+    #park-demo-v8 .touch-particle{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--viz-accent);pointer-events:none;z-index:8;animation:particleOut .9s ease-out forwards}
+    #park-demo-v8 .home-orb.effect-pulse{animation:touchPulse .72s ease}
+    #park-demo-v8 .home-orb.effect-tilt{animation:touchTilt .8s ease}
+    #park-demo-v8 .home-orb.effect-squash{animation:touchSquash .8s ease}
+    #park-demo-v8 .home-orb.effect-float{animation:touchFloat .95s ease}
+    #park-demo-v8 .home-orb.effect-ripple{animation:touchRipple .9s ease}
+    #park-demo-v8 .home-orb.effect-shiver{animation:touchShiver .65s ease}
+    #park-demo-v8 .home-orb-wrap.effect-glow .home-orb-haze{animation:touchGlow 1s ease}
+    #park-demo-v8 .reply-bubble{min-height:68px;border-radius:22px;padding:14px 16px;background:var(--viz-accent-bg-subtle);display:flex;align-items:center;justify-content:center;text-align:center}
+    #park-demo-v8 .map-shell{position:relative;height:390px;border:1px solid var(--viz-border);border-radius:25px;overflow:hidden;background:#eef3f7;perspective:900px}
+    #park-demo-v8 .map-scene{position:absolute;inset:0;transform:rotateX(48deg) rotateZ(-1deg) scale(.94);transform-origin:center 66%;transform-style:preserve-3d}
+    #park-demo-v8 .road{position:absolute;background:#fff;border:1px solid #dce3e9;border-radius:999px;box-shadow:0 2px 0 rgba(0,0,0,.04)}
+    #park-demo-v8 .building{position:absolute;border:1px solid rgba(110,130,150,.22);border-radius:8px;background:rgba(215,228,239,.9);box-shadow:0 8px 0 rgba(152,174,193,.22);transform-style:preserve-3d}
+    #park-demo-v8 .building.pink{background:rgba(239,222,244,.92)}#park-demo-v8 .building.blue{background:rgba(215,233,248,.95)}#park-demo-v8 .building.green{background:rgba(218,236,224,.9)}
+    #park-demo-v8 .store-pin{position:absolute;width:22px;height:22px;border:0;border-radius:50% 50% 50% 10%;transform:rotate(-45deg);background:var(--viz-panel);box-shadow:0 5px 12px rgba(0,0,0,.16);display:grid;place-items:center;cursor:pointer;z-index:8}
+    #park-demo-v8 .store-pin span{transform:rotate(45deg);font-size:10px}
+    #park-demo-v8 .store-pin.food{border:2px solid #f08a2f}#park-demo-v8 .store-pin.shop{border:2px solid #8d55d8}#park-demo-v8 .store-pin.service{border:2px solid #25b7c5}#park-demo-v8 .store-pin.art{border:2px solid var(--viz-accent)}
+    #park-demo-v8 .store-pin.active{outline:4px solid var(--viz-accent-bg);transform:rotate(-45deg) scale(1.2)}
+    #park-demo-v8 .map-discount-tag{position:absolute;z-index:21;display:none;max-width:110px;padding:5px 8px;border-radius:9px;background:var(--viz-accent);color:var(--viz-accent-text);font-size:11px;line-height:1.25;box-shadow:0 5px 14px rgba(0,0,0,.14);pointer-events:none}
+    #park-demo-v8 .map-discount-tag.visible{display:block;animation:tagAppear .25s ease}
+    #park-demo-v8 .map-discount-tag:after{content:"";position:absolute;left:11px;bottom:-4px;width:8px;height:8px;background:var(--viz-accent);transform:rotate(45deg)}
+    #park-demo-v8 .sculpture-marker{position:absolute;left:48%;top:46%;width:48px;height:48px;border:0;border-radius:50%;z-index:18;display:grid;place-items:center;background:var(--viz-accent);color:var(--viz-accent-text);font-size:20px;cursor:pointer;box-shadow:0 0 0 8px rgba(255,255,255,.84),0 0 0 12px var(--viz-accent-bg),0 0 34px rgba(70,160,255,.68);animation:sculpturePulse 1.8s ease-in-out infinite}
+    #park-demo-v8 .sculpture-marker:after{content:"";position:absolute;left:50%;top:43px;width:14px;height:14px;background:var(--viz-accent);transform:translateX(-50%) rotate(45deg);border-radius:2px;z-index:-1}
+    #park-demo-v8 .sculpture-marker.selected{animation:none;transform:scale(1.12)}
+    #park-demo-v8 .sculpture-caption{position:absolute;left:39%;top:61%;z-index:17;padding:5px 9px;border-radius:999px;background:var(--viz-accent);color:var(--viz-accent-text);font-size:11px;white-space:nowrap;pointer-events:none}
+    #park-demo-v8 .sculpture-ring{position:absolute;left:50.5%;top:52%;width:80px;height:80px;border:2px solid var(--viz-accent);border-radius:50%;transform:translate(-50%,-50%);z-index:15;pointer-events:none;animation:mapScan 2s ease-out infinite}
+    #park-demo-v8 .store-detail{display:none;margin-top:16px}#park-demo-v8 .store-detail.visible{display:block;animation:detailAppear .25s ease}
+    #park-demo-v8 .detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    #park-demo-v8 .detail-item{border:1px solid var(--viz-border);border-radius:14px;padding:11px;background:var(--viz-panel)}
+    #park-demo-v8 .menu-list{margin-top:10px;display:grid;gap:8px}
+    #park-demo-v8 .menu-row{display:flex;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:1px solid var(--viz-border);font-size:14px}
+    #park-demo-v8 .menu-row:last-child{padding-bottom:0;border-bottom:0}
+    #park-demo-v8 .proximity-panel{display:none;margin-top:16px}#park-demo-v8 .proximity-panel.visible{display:block;animation:detailAppear .25s ease}
+    #park-demo-v8 .distance-display{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+    #park-demo-v8 .distance-value{font-size:30px;font-weight:600;line-height:1}
+    #park-demo-v8 .distance-track{height:10px;margin-top:14px;overflow:hidden;border-radius:999px;background:var(--viz-accent-bg-subtle)}
+    #park-demo-v8 .distance-progress{height:100%;width:0;border-radius:999px;background:var(--viz-accent);transition:width .45s ease}
+    #park-demo-v8 #enter-wake{display:none}#park-demo-v8 #enter-wake.visible{display:block;animation:detailAppear .3s ease}
+    #park-demo-v8 .floor-view{position:relative;height:205px;margin-top:14px;border:1px solid var(--viz-border);border-radius:24px;overflow:hidden;background:linear-gradient(180deg,var(--viz-card),var(--viz-panel));perspective:950px}
+    #park-demo-v8 .tower{position:absolute;left:50%;top:54%;width:190px;height:126px;transform:translate(-50%,-50%) rotateX(58deg) rotateZ(-30deg);transform-style:preserve-3d}
+    #park-demo-v8 .floor{position:absolute;left:0;width:190px;height:72px;border:1px solid var(--viz-border);border-radius:12px;background:rgba(230,236,242,.88);display:flex;align-items:center;justify-content:space-between;padding:0 18px;box-shadow:0 8px 0 rgba(100,120,140,.13);transition:.35s ease}
+    #park-demo-v8 .floor:nth-child(1){transform:translateZ(0)}#park-demo-v8 .floor:nth-child(2){transform:translateZ(34px)}#park-demo-v8 .floor:nth-child(3){transform:translateZ(68px)}
+    #park-demo-v8 .floor.active{background:var(--viz-accent-bg);border-color:var(--viz-accent);transform:translateZ(88px) scale(1.04)}
+    #park-demo-v8 .floor-tag{font-size:12px;color:var(--viz-muted)}
+    #park-demo-v8 .wake-stage{position:relative;height:330px;border:1px solid var(--viz-border);border-radius:26px;overflow:hidden;background:radial-gradient(circle at center,rgba(255,255,255,.11),transparent 42%),linear-gradient(180deg,#161928,#080a12);color:#fff}
+    #park-demo-v8 .wake-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:28px 28px;mask-image:radial-gradient(circle,#000 12%,transparent 78%)}
+    #park-demo-v8 .center-orb-haze{position:absolute;left:50%;top:50%;width:130px;height:130px;transform:translate(-50%,-50%);border-radius:50%;z-index:4;background:radial-gradient(circle,rgba(143,203,255,.4),rgba(116,223,213,.16) 45%,transparent 72%);filter:blur(16px);animation:hazeBreathe 3s ease-in-out infinite}
+    #park-demo-v8 .center-orb{position:absolute;left:50%;top:50%;width:88px;height:88px;transform:translate(-50%,-50%);border-radius:48% 52% 50% 46%;z-index:6;background:radial-gradient(circle at 30% 27%,rgba(255,255,255,.96),transparent 18%),radial-gradient(circle at 70% 65%,rgba(255,212,92,.92),transparent 34%),radial-gradient(circle at 28% 72%,rgba(72,221,203,.86),transparent 38%),radial-gradient(circle at 70% 30%,rgba(255,131,190,.86),transparent 38%),rgba(183,201,255,.9);box-shadow:0 0 24px rgba(137,187,255,.62),0 0 48px rgba(109,230,218,.28);filter:blur(.35px);animation:softOrbBreathe 3.4s ease-in-out infinite}
+    #park-demo-v8 .center-orb:before{content:"";position:absolute;inset:-12px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.16),rgba(138,203,255,.12) 46%,transparent 72%);filter:blur(10px);animation:edgeBreathe 3.4s ease-in-out infinite}
+    #park-demo-v8 .center-orb:after{content:"";position:absolute;inset:12%;border-radius:42% 58% 63% 37%;background:rgba(255,255,255,.22);filter:blur(7px);animation:spin 6s linear infinite}
+    #park-demo-v8 .scan-ring{position:absolute;left:50%;top:50%;width:138px;height:138px;border:1px solid rgba(143,205,255,.65);border-radius:50%;transform:translate(-50%,-50%);animation:scan 2.8s linear infinite}
+    #park-demo-v8 .scan-ring.r2{width:208px;height:208px;animation-delay:.9s}#park-demo-v8 .scan-ring.r3{width:282px;height:282px;animation-delay:1.8s}
+    #park-demo-v8 .person-slot{position:absolute;width:46px;height:46px;border-radius:50%;border:1px dashed rgba(255,255,255,.36);background:rgba(255,255,255,.05);display:grid;place-items:center;font-size:11px;color:rgba(255,255,255,.62);z-index:7;transition:.55s ease}
+    #park-demo-v8 .person-slot.detecting{animation:detecting 1s ease infinite}#park-demo-v8 .person-slot.detected{border-style:solid;border-color:#6de6da;background:rgba(109,230,218,.19);color:#fff;box-shadow:0 0 25px rgba(109,230,218,.58);transform:scale(1.06)}
+    #park-demo-v8 .p1{left:8%;top:18%}#park-demo-v8 .p2{right:8%;top:18%}#park-demo-v8 .p3{left:8%;bottom:18%}#park-demo-v8 .p4{right:8%;bottom:18%}#park-demo-v8 .p5{left:44%;top:5%}
+    #park-demo-v8 .adult-bear{position:absolute;left:50%;top:52%;width:150px;height:188px;transform:translate(-50%,-50%) scale(.8);opacity:0;filter:blur(14px);z-index:9;pointer-events:none}
+    #park-demo-v8 .adult-bear .head{position:absolute;left:30px;top:8px;width:90px;height:78px;border-radius:48% 48% 42% 42%;background:rgba(255,255,255,.9)}
+    #park-demo-v8 .adult-bear .ear{position:absolute;top:0;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.9)}
+    #park-demo-v8 .adult-bear .ear.left{left:22px}#park-demo-v8 .adult-bear .ear.right{right:22px}
+    #park-demo-v8 .adult-bear .body{position:absolute;left:20px;top:67px;width:110px;height:112px;border-radius:46% 46% 38% 38%;background:rgba(255,255,255,.84)}
+    #park-demo-v8 .adult-bear .eye{position:absolute;top:38px;width:8px;height:8px;border-radius:50%;background:rgba(20,25,35,.75);z-index:2}#park-demo-v8 .adult-bear .eye.left{left:55px}#park-demo-v8 .adult-bear .eye.right{right:55px}
+    #park-demo-v8 .flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:10;pointer-events:none}
+    #park-demo-v8 .wake-stage.waking .center-orb{animation:orbCharge 1.8s ease forwards}#park-demo-v8 .wake-stage.waking .center-orb-haze{animation:hazeCharge 1.8s ease forwards}
+    #park-demo-v8 .wake-stage.reveal .flash{animation:screenFlash 1s ease}#park-demo-v8 .wake-stage.reveal .adult-bear{animation:bearReveal 1s ease}
+    #park-demo-v8 .step-row{display:flex;gap:12px;align-items:flex-start}#park-demo-v8 .step-dot{width:22px;height:22px;border-radius:50%;border:1px solid var(--viz-border);display:grid;place-items:center;font-size:11px;flex:0 0 auto;background:var(--viz-panel)}
+    #park-demo-v8 .step-row.done .step-dot{background:var(--viz-accent);color:var(--viz-accent-text);border-color:var(--viz-accent)}#park-demo-v8 .step-row.current .step-dot{border-color:var(--viz-accent);box-shadow:0 0 0 4px var(--viz-accent-bg)}
+    #park-demo-v8 .reward-pop{position:absolute;left:50%;top:68%;z-index:14;transform:translateX(-50%);padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.94);color:#18202b;font-weight:600;opacity:0;pointer-events:none}#park-demo-v8 .wake-stage.rewarded .reward-pop{animation:rewardPop 1.8s ease forwards}
+    @keyframes spin{to{transform:rotate(360deg)}}@keyframes orbBreathe{0%,100%{transform:scale(.97) translateY(4px)}50%{transform:scale(1.035) translateY(-4px)}}@keyframes homeHaze{0%,100%{opacity:.45;transform:scale(.9)}50%{opacity:.85;transform:scale(1.12)}}@keyframes edgeBreathe{0%,100%{opacity:.45;transform:scale(.9)}50%{opacity:.9;transform:scale(1.12)}}@keyframes touchPulse{0%{transform:scale(1)}35%{transform:scale(1.18)}70%{transform:scale(.94)}100%{transform:scale(1)}}@keyframes touchTilt{0%{transform:rotate(0)}30%{transform:rotate(-11deg) translateX(-5px)}65%{transform:rotate(8deg) translateX(4px)}100%{transform:rotate(0)}}@keyframes touchSquash{0%{transform:scale(1)}35%{transform:scaleX(1.14) scaleY(.86)}65%{transform:scaleX(.92) scaleY(1.1)}100%{transform:scale(1)}}@keyframes touchFloat{0%{transform:translateY(0)}40%{transform:translateY(-18px) scale(1.06)}75%{transform:translateY(5px) scale(.98)}100%{transform:translateY(0)}}@keyframes touchRipple{0%{box-shadow:0 18px 45px rgba(66,76,106,.16),0 0 0 0 rgba(100,210,205,.5)}70%{box-shadow:0 18px 45px rgba(66,76,106,.16),0 0 0 26px rgba(100,210,205,0)}100%{box-shadow:0 18px 45px rgba(66,76,106,.16),0 0 0 0 rgba(100,210,205,0)}}@keyframes touchShiver{0%,100%{transform:translateX(0)}18%{transform:translateX(-6px)}36%{transform:translateX(5px)}54%{transform:translateX(-4px)}72%{transform:translateX(3px)}}@keyframes touchGlow{0%{opacity:.45;transform:scale(.9)}45%{opacity:1;transform:scale(1.4)}100%{opacity:.45;transform:scale(.9)}}@keyframes particleOut{0%{opacity:0;transform:translate(0,0) scale(.4)}25%{opacity:1}100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(1.2)}}@keyframes sculpturePulse{0%,100%{transform:scale(.95)}50%{transform:scale(1.08)}}@keyframes mapScan{0%{opacity:.8;transform:translate(-50%,-50%) scale(.45)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.6)}}@keyframes softOrbBreathe{0%,100%{transform:translate(-50%,-50%) scale(.94);border-radius:48% 52% 50% 46%;filter:blur(.6px)}50%{transform:translate(-50%,-50%) scale(1.07);border-radius:53% 47% 45% 55%;filter:blur(.15px)}}@keyframes hazeBreathe{0%,100%{opacity:.48;transform:translate(-50%,-50%) scale(.9)}50%{opacity:.86;transform:translate(-50%,-50%) scale(1.14)}}@keyframes scan{0%{opacity:.72;transform:translate(-50%,-50%) scale(.4)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.18)}}@keyframes detecting{0%,100%{box-shadow:0 0 0 rgba(109,230,218,0)}50%{box-shadow:0 0 24px rgba(109,230,218,.55)}}@keyframes orbCharge{0%{transform:translate(-50%,-50%) scale(1)}65%{transform:translate(-50%,-50%) scale(1.35);filter:brightness(1.7) blur(.1px)}100%{transform:translate(-50%,-50%) scale(1.02)}}@keyframes hazeCharge{0%{opacity:.5;transform:translate(-50%,-50%) scale(1)}65%{opacity:1;transform:translate(-50%,-50%) scale(1.55)}100%{opacity:.75;transform:translate(-50%,-50%) scale(1.1)}}@keyframes screenFlash{0%{opacity:0}20%{opacity:.95}48%{opacity:.38}100%{opacity:0}}@keyframes bearReveal{0%{opacity:0;transform:translate(-50%,-50%) scale(.65);filter:blur(23px)}28%{opacity:.92;filter:blur(9px)}70%{opacity:.75;transform:translate(-50%,-50%) scale(1.08);filter:blur(12px)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.2);filter:blur(21px)}}@keyframes rewardPop{0%{opacity:0;transform:translate(-50%,16px) scale(.85)}25%{opacity:1;transform:translate(-50%,0) scale(1.08)}70%{opacity:1;transform:translate(-50%,-5px) scale(1)}100%{opacity:0;transform:translate(-50%,-22px) scale(.96)}}@keyframes tagAppear{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}@keyframes detailAppear{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+    /* ---- 复刻自 index：今日成长 / 附近正在发生（伙伴页） ---- */
+    #park-demo-v8 .energy-collage{display:flex;gap:9px;justify-content:space-between;padding-top:4px}
+    #park-demo-v8 .energy-chip{position:relative;width:58px;height:96px;border-radius:20px;background:var(--viz-accent-bg-subtle);overflow:hidden;box-shadow:0 10px 18px -8px rgba(22,21,28,.16),0 2px 4px rgba(22,21,28,.06);display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+    #park-demo-v8 .energy-chip:nth-child(1){transform:rotate(-4deg)}#park-demo-v8 .energy-chip:nth-child(2){transform:rotate(2deg)}#park-demo-v8 .energy-chip:nth-child(3){transform:rotate(-2deg)}#park-demo-v8 .energy-chip:nth-child(4){transform:rotate(3deg)}#park-demo-v8 .energy-chip:nth-child(5){transform:rotate(-3deg)}
+    #park-demo-v8 .energy-fill{position:absolute;bottom:0;left:0;right:0;border-radius:0 0 20px 20px}
+    #park-demo-v8 .energy-icon{position:relative;z-index:2;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-bottom:8px}
+    #park-demo-v8 .energy-badge{position:absolute;top:-6px;right:-6px;background:#18202b;color:#fff;font-size:9px;font-weight:700;padding:3px 7px;border-radius:20px;box-shadow:0 4px 8px rgba(0,0,0,.25);z-index:3}
+    #park-demo-v8 .energy-labels{display:flex;justify-content:space-between;margin-top:10px}
+    #park-demo-v8 .energy-labels span{flex:1;text-align:center;font-size:9.5px;color:var(--viz-muted)}
+    #park-demo-v8 .nearby-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--viz-border)}
+    #park-demo-v8 .nearby-item:last-child{border-bottom:none}
+    #park-demo-v8 .nearby-main .n-title{font-size:13px;font-weight:600}
+    #park-demo-v8 .nearby-main .n-sub{font-size:11px;color:var(--viz-muted);margin-top:2px}
+    #park-demo-v8 .n-tag{font-size:10px;padding:6px 12px;border-radius:20px;white-space:nowrap;font-weight:600;box-shadow:0 10px 18px -8px rgba(22,21,28,.22),0 2px 4px rgba(22,21,28,.06);cursor:pointer}
+
+    /* ---- 复刻自 index：记录 / 我的 页面 ---- */
+    #park-demo-v8 .idx-topbar{display:flex;justify-content:space-between;align-items:flex-start}
+    #park-demo-v8 .idx-title{font-size:22px;font-weight:600}
+    #park-demo-v8 .idx-date{font-size:12px;color:var(--viz-muted);margin-top:4px}
+    #park-demo-v8 .idx-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#4FA6FF,#FF6FA0 55%,#FFD84D);box-shadow:0 10px 18px -8px rgba(22,21,28,.22),0 2px 4px rgba(22,21,28,.06)}
+    #park-demo-v8 .month-head{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+    #park-demo-v8 .month-head .m-title{font-size:18px;font-weight:600}
+    #park-demo-v8 .weekday-row{display:grid;grid-template-columns:repeat(7,1fr);margin-top:16px}
+    #park-demo-v8 .weekday-row span{font-size:10px;color:var(--viz-muted);text-align:center}
+    #park-demo-v8 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:8px}
+    #park-demo-v8 .cal-cell{aspect-ratio:1;border-radius:14px;background:var(--viz-accent-bg-subtle);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;color:var(--viz-muted);position:relative}
+    #park-demo-v8 .cal-cell.has-activity{box-shadow:0 10px 18px -8px rgba(22,21,28,.22),0 2px 4px rgba(22,21,28,.06)}
+    #park-demo-v8 .cal-dot{width:8px;height:8px;border-radius:50%}
+    #park-demo-v8 .cal-num{font-size:9px}
+    #park-demo-v8 .summary-card p{font-size:13px;line-height:1.9;color:var(--viz-muted)}
+    #park-demo-v8 .summary-card strong{color:var(--viz-text)}
+    #park-demo-v8 .me-hero{display:flex;flex-direction:column;align-items:center;margin-top:10px;text-align:center}
+    #park-demo-v8 .me-hero .bear{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#FFD84D,#4FA6FF 55%,#FF6FA0 100%);margin-bottom:14px;box-shadow:0 0 40px 6px rgba(255,111,160,.25),0 20px 26px -12px rgba(0,0,0,.2)}
+    #park-demo-v8 .me-hero .m-name{font-size:19px;font-weight:600}
+    #park-demo-v8 .me-hero .m-tag{font-size:12px;color:var(--viz-muted);margin-top:4px}
+    #park-demo-v8 .me-list .m-row{display:flex;justify-content:space-between;align-items:center;padding:13px 4px;border-bottom:1px solid var(--viz-border);font-size:13px}
+    #park-demo-v8 .me-list .m-row:last-child{border-bottom:none}
+    #park-demo-v8 .m-row .m-val{color:var(--viz-muted);font-size:12px}
+  </style>
+
+  <div class="phone"><div class="screen"><div class="page-scroll">
+    <section id="page-partner" class="page active p-5">
+      <div class="flex items-start justify-between"><div><p class="text-sm text-muted">今天 · 7月21日</p><h2 class="mt-1 text-xl font-medium">早上好</h2></div><span class="viz-badge">意识形成期</span></div>
+      <div class="mt-5"><div class="flex justify-between text-sm"><span>成长能量</span><span id="energy-text">380 / 500</span></div><div class="mt-2 h-2.5 overflow-hidden rounded-full" style="background:var(--viz-accent-bg-subtle)"><div id="energy-bar" class="h-full rounded-full" style="width:76%;background:var(--viz-accent)"></div></div></div>
+      <div class="grid place-items-center py-5"><div id="home-orb-wrap" class="home-orb-wrap"><div class="home-orb-haze"></div><button id="home-orb" type="button" class="home-orb"></button></div></div>
+      <div class="reply-bubble"><p id="partner-reply">它感受到你来了，正慢慢向你的手靠近。</p></div><p class="mt-3 text-center text-sm text-muted">轻轻触摸，伙伴会用不同的方式回应你</p>
+
+      <div class="card p-4 mt-5">
+        <p class="font-medium">今日成长</p>
+        <div class="energy-collage mt-3">
+          <div class="energy-chip"><div class="energy-badge">+45</div><div class="energy-icon" style="color:#E14D82;">生</div><div class="energy-fill" style="height:70%;background:linear-gradient(180deg,#FFB3CE,#E14D82);"></div></div>
+          <div class="energy-chip"><div class="energy-badge">+20</div><div class="energy-icon" style="color:#2E86E8;">陪</div><div class="energy-fill" style="height:40%;background:linear-gradient(180deg,#BFE0FF,#2E86E8);"></div></div>
+          <div class="energy-chip"><div class="energy-badge">+60</div><div class="energy-icon" style="color:#1F9E5D;">探</div><div class="energy-fill" style="height:85%;background:linear-gradient(180deg,#A6EFC7,#1F9E5D);"></div></div>
+          <div class="energy-chip"><div class="energy-badge">+15</div><div class="energy-icon" style="color:#E0A400;">艺</div><div class="energy-fill" style="height:30%;background:linear-gradient(180deg,#FFE79A,#E0A400);"></div></div>
+          <div class="energy-chip"><div class="energy-badge">+8</div><div class="energy-icon" style="color:#7B45E0;">连</div><div class="energy-fill" style="height:18%;background:linear-gradient(180deg,#D9C7FF,#7B45E0);"></div></div>
+        </div>
+        <div class="energy-labels"><span>生活</span><span>陪伴</span><span>探索</span><span>艺术</span><span>连接</span></div>
+      </div>
+
+      <div class="card p-4 mt-4">
+        <p class="font-medium">附近正在发生</p>
+        <div class="nearby-item">
+          <div class="nearby-main"><div class="n-title">云朵熊 · 雕塑</div><div class="n-sub">距你 80 米 · 正等待第二位参与者</div></div>
+          <div class="n-tag" id="nearby-wake-tag" style="background:var(--viz-accent);color:var(--viz-accent-text);">去唤醒</div>
+        </div>
+        <div class="nearby-item">
+          <div class="nearby-main"><div class="n-title">安壮壮无限自助烤肉</div><div class="n-sub">排队5桌 · 预计等待35分钟</div></div>
+          <div class="n-tag" id="nearby-map-tag" style="background:var(--viz-chip-card);color:var(--viz-muted);">查看</div>
+        </div>
+        <div class="nearby-item">
+          <div class="nearby-main"><div class="n-title">共同打卡活动</div><div class="n-sub">今日已有 12 组伙伴完成协作</div></div>
+          <div class="n-tag" style="background:#FF6FA0;color:#fff;">加入</div>
+        </div>
+      </div>
+
+      <button id="go-map" type="button" class="mt-5 w-full rounded-2xl px-4 py-3 font-medium" style="background:var(--viz-accent);color:var(--viz-accent-text)">查看附近地图</button>
+    </section>
+    <section id="page-map" class="page p-5">
+      <div class="flex items-end justify-between"><div><p class="text-sm text-muted">真实商圈空间</p><h2 class="mt-1 text-xl font-medium">公园里地图</h2></div><span class="viz-badge">40 个店铺节点</span></div>
+      <div id="map-shell" class="map-shell mt-4"><div class="map-scene"><div class="road" style="left:0;top:6%;width:100%;height:12px"></div><div class="road" style="left:4%;top:49%;width:92%;height:14px"></div><div class="road" style="left:2%;bottom:5%;width:96%;height:13px"></div><div class="road" style="left:27%;top:6%;width:13px;height:87%"></div><div class="road" style="left:59%;top:4%;width:13px;height:88%"></div><div class="building pink" style="left:3%;top:13%;width:23%;height:31%"></div><div class="building" style="left:29%;top:12%;width:28%;height:29%"></div><div class="building blue" style="left:62%;top:11%;width:34%;height:30%"></div><div class="building pink" style="left:3%;top:57%;width:25%;height:28%"></div><div class="building pink" style="left:31%;top:57%;width:27%;height:28%"></div><div class="building blue" style="left:62%;top:57%;width:34%;height:28%"></div><div class="building green" style="left:1%;bottom:0;width:97%;height:3%"></div></div><div class="sculpture-ring"></div><button id="sculpture-marker" type="button" class="sculpture-marker">熊</button><span class="sculpture-caption">云朵熊雕塑 · 高亮位置</span><div id="map-discount-tag" class="map-discount-tag">限时优惠</div></div>
+      <div id="store-info" class="viz-callout mt-4"><p class="font-medium">选择地图中的店铺或雕塑</p><p class="mt-1 text-sm">点击店铺查看等位、菜单与优惠；点击雕塑查看当前位置距离。</p></div>
+      <div id="store-detail" class="store-detail"><div class="detail-grid"><div class="detail-item"><p class="text-sm text-muted">当前等位</p><p id="queue-value" class="mt-1 font-medium">—</p></div><div class="detail-item"><p class="text-sm text-muted">预计等待</p><p id="wait-value" class="mt-1 font-medium">—</p></div><div class="detail-item"><p class="text-sm text-muted">店铺优惠</p><p id="discount-value" class="mt-1 font-medium">—</p></div></div><div class="card mt-3 p-4"><div class="flex items-center justify-between"><p class="font-medium">推荐菜单</p><span class="text-sm text-muted">今日推荐</span></div><div id="menu-list" class="menu-list"></div></div><div id="offer-callout" class="viz-callout mt-3"></div></div>
+      <div id="proximity-panel" class="proximity-panel card p-4"><div class="distance-display"><div><p class="text-sm text-muted">你与云朵熊的距离</p><p id="distance-value" class="distance-value mt-2">6.0 米</p></div><span id="distance-state" class="viz-badge">范围外</span></div><div class="distance-track"><div id="distance-progress" class="distance-progress"></div></div><p id="distance-hint" class="mt-3 text-sm text-muted">继续靠近雕塑，进入约 1 米范围后可参与多人感应。</p><button id="approach-bear" type="button" class="mt-4 w-full rounded-2xl border px-4 py-3 font-medium">模拟靠近云朵熊</button></div>
+      <div class="floor-view"><div class="absolute left-4 top-4 z-10"><p class="text-sm text-muted">三维楼层定位</p><p id="floor-title" class="font-medium">尚未选择店铺</p></div><div class="tower"><div class="floor" data-floor="1"><span>1F</span><span class="floor-tag">街区首层</span></div><div class="floor" data-floor="2"><span>2F</span><span class="floor-tag">商业内街</span></div><div class="floor" data-floor="3"><span>3F</span><span class="floor-tag">体验与工作室</span></div></div></div>
+      <button id="enter-wake" type="button" class="mt-4 w-full rounded-2xl px-4 py-3 font-medium" style="background:var(--viz-accent);color:var(--viz-accent-text)">进入多人感应唤醒</button>
+    </section>
+    <section id="page-wake" class="page p-5"><div class="flex items-end justify-between"><div><p class="text-sm text-muted">多人共同感应</p><h2 class="mt-1 text-xl font-medium">唤醒云朵熊</h2></div><span id="daily-state" class="viz-badge">今日未唤醒</span></div><div id="wake-stage" class="wake-stage mt-5"><div class="wake-grid"></div><div class="scan-ring"></div><div class="scan-ring r2"></div><div class="scan-ring r3"></div><div id="person-1" class="person-slot p1">等待</div><div id="person-2" class="person-slot p2">等待</div><div id="person-3" class="person-slot p3">等待</div><div id="person-4" class="person-slot p4">等待</div><div id="person-5" class="person-slot p5">等待</div><div class="center-orb-haze"></div><div class="center-orb"></div><div class="adult-bear"><div class="ear left"></div><div class="ear right"></div><div class="head"></div><div class="eye left"></div><div class="eye right"></div><div class="body"></div></div><div class="reward-pop">成长值 +5</div><div class="flash"></div></div><div class="mt-4 flex items-center justify-between"><p id="people-status" class="font-medium">当前感应到 0 人</p><span id="requirement" class="text-sm text-muted">至少需要 2 人</span></div><p id="wake-status" class="mt-2 text-sm text-muted">请先点击“我靠近”，进入雕塑感应范围。</p><div class="mt-4 card p-4 space-y-4"><div id="step-1" class="step-row current"><span class="step-dot">1</span><div><p class="font-medium">进入感应范围</p><p class="text-sm text-muted">系统依次识别靠近雕塑的用户</p></div></div><div id="step-2" class="step-row"><span class="step-dot">2</span><div><p class="font-medium">等待第二位参与者</p><p class="text-sm text-muted">人数不足时可邀请附近路人协助</p></div></div><div id="step-3" class="step-row"><span class="step-dot">3</span><div><p class="font-medium">共同确认并唤醒</p><p class="text-sm text-muted">达到两人后开放唤醒按钮</p></div></div></div><div class="mt-4 grid grid-cols-2 gap-3"><button id="detect-user" type="button" class="rounded-2xl border px-3 py-3">我靠近</button><button id="invite-passersby" type="button" class="rounded-2xl border px-3 py-3">邀请路人帮助</button></div><button id="wake-btn" type="button" disabled class="mt-3 w-full rounded-2xl px-4 py-3 font-medium" style="background:var(--viz-accent);color:var(--viz-accent-text)">人数不足，暂不可唤醒</button><button id="reset-demo" type="button" class="mt-3 w-full rounded-2xl border px-4 py-3 text-sm">Demo：重置今日状态</button></section>
+    <section id="page-record" class="page p-5">
+      <div class="idx-topbar"><div><div class="idx-title">记录</div><div class="idx-date">成长档案</div></div><div class="idx-avatar"></div></div>
+      <div class="month-head"><div class="m-title">2026年7月</div><div class="text-sm text-muted">已来 8 次</div></div>
+      <div class="weekday-row"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="card summary-card p-4 mt-4">
+        <p class="font-medium mb-3">本月小结</p>
+        <p>本月来到「公园里」<strong>8</strong> 次<br>共同唤醒雕塑 <strong>5</strong> 次<br>停留总时长 <strong>6小时20分</strong><br>发现 <strong>7</strong> 家商户<br>你的伙伴正在形成「<strong>安静探索型</strong>」性格</p>
+      </div>
+      <div class="mt-4 grid grid-cols-2 gap-3">
+        <div class="metric-card"><p class="text-sm text-muted">今日积分触摸</p><p id="record-touch" class="viz-stat-value">0 次</p></div>
+        <div class="metric-card"><p class="text-sm text-muted">今日雕塑唤醒</p><p id="record-wake" class="viz-stat-value">0 次</p></div>
+        <div class="metric-card"><p class="text-sm text-muted">地图店铺节点</p><p class="viz-stat-value">40 个</p></div>
+        <div class="metric-card"><p class="text-sm text-muted">雕塑成长值</p><p id="record-sculpture-energy" class="viz-stat-value">0</p></div>
+      </div>
+    </section>
+    <section id="page-profile" class="page p-5">
+      <div class="idx-topbar"><div><div class="idx-title">我的</div><div class="idx-date">账户与设置</div></div><div class="idx-avatar"></div></div>
+      <div class="me-hero">
+        <div class="bear"></div>
+        <div class="m-name">安静探索型 · 熊</div>
+        <div class="m-tag">与你共同生活 42 天</div>
+      </div>
+      <div class="card me-list mt-4 p-2">
+        <div class="m-row"><span>累计能量</span><span class="m-val">3,280</span></div>
+        <div class="m-row"><span>共同唤醒雕塑</span><span class="m-val">12 次</span></div>
+        <div class="m-row"><span>社区徽章</span><span class="m-val">6 枚</span></div>
+        <div class="m-row"><span>消息通知</span><span class="m-val">开启</span></div>
+        <div class="m-row"><span>关于公园里</span><span class="m-val">›</span></div>
+      </div>
+    </section>
+  </div><nav class="grid grid-cols-4 border-t px-2 py-3" style="border-color:var(--viz-border);background:var(--viz-panel)"><button type="button" class="nav-btn active py-2 text-sm" data-page="partner">伙伴</button><button type="button" class="nav-btn py-2 text-sm" data-page="map">地图</button><button type="button" class="nav-btn py-2 text-sm" data-page="record">记录</button><button type="button" class="nav-btn py-2 text-sm" data-page="profile">我的</button></nav></div></div>
+
+  <script>
+    const app=document.getElementById('park-demo-v8'),pages=app.querySelectorAll('.page'),navs=app.querySelectorAll('.nav-btn'),pageScroll=app.querySelector('.page-scroll');
+    function showPage(name){pages.forEach(p=>p.classList.toggle('active',p.id===`page-${name}`));navs.forEach(n=>n.classList.toggle('active',n.dataset.page===name));pageScroll.scrollTop=0}
+    navs.forEach(n=>n.addEventListener('click',()=>showPage(n.dataset.page)));app.querySelector('#go-map').addEventListener('click',()=>showPage('map'));app.querySelector('#enter-wake').addEventListener('click',()=>showPage('wake'));
+    let energy=380,rewardTouches=0,lastRewardAt=null,touchIndex=0;const cooldown=3600000,interactions=[{effect:'effect-pulse',reply:'它忽然鼓起一点力量，像是在用心跳回应你的触摸。'},{effect:'effect-tilt',reply:'它歪向你的手指，好像想听清你此刻的心情。'},{effect:'effect-squash',reply:'它柔软地缩成一团，又慢慢舒展开来。'},{effect:'effect-float',reply:'它轻轻向上浮了一下，像被你的问候托住。'},{effect:'effect-ripple',reply:'一圈柔和的波动从它的内部向外散开。'},{effect:'effect-shiver',reply:'它短暂地颤动了几下，像是突然被你逗笑了。'}];
+    const orb=app.querySelector('#home-orb'),orbWrap=app.querySelector('#home-orb-wrap'),reply=app.querySelector('#partner-reply'),energyText=app.querySelector('#energy-text'),energyBar=app.querySelector('#energy-bar'),recordTouch=app.querySelector('#record-touch');
+    function makeParticles(){for(let i=0;i<6;i++){const p=document.createElement('span'),angle=Math.PI*2/6*i+Math.random()*.35,distance=45+Math.random()*35;p.className='touch-particle';p.style.left=`${105+Math.cos(angle)*20}px`;p.style.top=`${105+Math.sin(angle)*20}px`;p.style.setProperty('--tx',`${Math.cos(angle)*distance}px`);p.style.setProperty('--ty',`${Math.sin(angle)*distance}px`);orbWrap.appendChild(p);setTimeout(()=>p.remove(),950)}}
+    orb.addEventListener('click',()=>{const interaction=interactions[touchIndex++%interactions.length];interactions.forEach(item=>orb.classList.remove(item.effect));orbWrap.classList.remove('effect-glow');void orb.offsetWidth;orb.classList.add(interaction.effect);orbWrap.classList.add('effect-glow');makeParticles();reply.textContent=interaction.reply;const now=Date.now();if(lastRewardAt===null||now-lastRewardAt>=cooldown){lastRewardAt=now;rewardTouches++;energy=Math.min(500,energy+8);reply.textContent+=' 它也悄悄积累了一点新的成长能量。';energyText.textContent=`${energy} / 500`;energyBar.style.width=`${energy/5}%`;recordTouch.textContent=`${rewardTouches} 次`}setTimeout(()=>{orb.classList.remove(interaction.effect);orbWrap.classList.remove('effect-glow')},1100)});
+    const stores=[{name:'华为授权体验店',type:'shop',x:12,y:24,floor:1,queue:'无需等位',wait:'可直接进店',discount:'满减',offer:'指定智能配件满 300 减 40',menu:[['智能手表体验','免费'],['手机贴膜服务','¥29'],['智能配件套装','¥299']]},{name:'花千代秘制烤鱼',type:'food',x:20,y:76,floor:1,queue:'前方 8 桌',wait:'约 35 分钟',discount:'8.8 折',offer:'工作日 17:00 前到店享主菜 8.8 折',menu:[['招牌青花椒烤鱼','¥138'],['麻辣烤鱼','¥128'],['手工红糖糍粑','¥22']]},{name:'国央清书画社',type:'art',x:55,y:33,floor:2,queue:'预约制',wait:'下一场 15:30',discount:'体验价',offer:'首次到店书画体验课 59 元',menu:[['书法体验课','¥59'],['国画基础课','¥79'],['亲子拓印体验','¥69']]},{name:'茶百道',type:'food',x:92,y:84,floor:1,queue:'前方 12 杯',wait:'约 9 分钟',discount:'立减 5 元',offer:'小程序下单满 25 元立减 5 元',menu:[['杨枝甘露','¥18'],['豆乳玉麒麟','¥17'],['西瓜啵啵','¥16']]}];
+    const filler=[['凯小将线下素养中心','service',8,33,2],['郑州市新途径教育','service',14,70,2],['猴始主义跑酷','service',25,66,2],['百慕便利店','shop',43,17,1],['春藤托育','service',48,29,2],['鲜麦打酒站','shop',51,44,1],['六方鲜糟粕醋拌面火锅','food',43,59,1],['镶郑味鲜妙柴火鸡','food',51,62,1],['时影私影俱乐部','shop',62,40,2],['崂溪买手集合店','shop',65,58,1],['三酒肆九','food',69,47,1],['汉谈炸鸡','food',68,69,1],['范阿坤煲仔饭','food',40,72,1],['游喜鸡','food',48,78,1],['娜姐鲜货铺','shop',63,77,1],['星姨糖水','food',75,69,1],['小威串串麻辣烫','food',57,86,1],['咪兔cake烘焙工作室','food',69,87,2],['悦脑AI智习室','service',78,25,2],['李四辈','food',79,39,1],['耳舒采耳','shop',86,43,2],['科大讯飞英语通AI体验馆','shop',81,55,2],['风岛民宿','shop',88,61,2],['很多往事烧烤小酒馆','food',76,70,1],['安壮仕无限自助烤肉','food',83,72,1],['加班Bar','food',91,75,1],['暖燕·姨妈热饮','food',81,81,1],['美宜佳便利店','shop',78,88,1],['悦来悦喜便利店','shop',87,88,1],['苏北金湖龙虾','food',97,84,1],['福乐康大药房','shop',84,94,1],['花缦花艺工作室','shop',91,95,3],['朗悦公园里招商处','service',97,94,2],['石城街舞工作室','service',31,62,2],['果太子集团','shop',22,66,1],['柘壁培育钻石体验中心','shop',38,94,3]];
+    filler.forEach((s,i)=>stores.push({name:s[0],type:s[1],x:s[2],y:s[3],floor:s[4],queue:i%3===0?'无需等位':`前方 ${i%7+1} 组`,wait:i%3===0?'可直接到店':`约 ${8+i%5*5} 分钟`,discount:i%2===0?'到店优惠':'会员福利',offer:i%2===0?'到店出示地图页面可领取专属优惠':'会员到店可领取积分与限定权益',menu:[['店铺推荐项目','¥39 起'],['人气体验项目','¥69 起'],['今日限定项目','¥99 起']]}));
+    const map=app.querySelector('#map-shell'),info=app.querySelector('#store-info'),floorTitle=app.querySelector('#floor-title'),storeDetail=app.querySelector('#store-detail'),proximityPanel=app.querySelector('#proximity-panel'),discountTag=app.querySelector('#map-discount-tag'),queueValue=app.querySelector('#queue-value'),waitValue=app.querySelector('#wait-value'),discountValue=app.querySelector('#discount-value'),menuList=app.querySelector('#menu-list'),offerCallout=app.querySelector('#offer-callout'),enterWake=app.querySelector('#enter-wake'),approachBear=app.querySelector('#approach-bear'),distanceValue=app.querySelector('#distance-value'),distanceState=app.querySelector('#distance-state'),distanceHint=app.querySelector('#distance-hint'),distanceProgress=app.querySelector('#distance-progress');let bearDistance=6;
+    function hideMapPanels(){storeDetail.classList.remove('visible');proximityPanel.classList.remove('visible');enterWake.classList.remove('visible');discountTag.classList.remove('visible')}
+    function updateDistance(){distanceValue.textContent=`${bearDistance.toFixed(1)} 米`;distanceProgress.style.width=`${Math.max(0,Math.min(100,(6-bearDistance)/5*100))}%`;if(bearDistance<=1){distanceState.textContent='已进入范围';distanceHint.textContent='已进入约 1 米感应范围，可以进入多人感应唤醒。';approachBear.disabled=true;approachBear.textContent='已到达云朵熊附近';enterWake.classList.add('visible')}else if(bearDistance<=2){distanceState.textContent='即将到达';distanceHint.textContent='距离已经很近，请继续靠近至约 1 米范围。';approachBear.textContent='继续靠近'}else{distanceState.textContent='范围外';distanceHint.textContent='继续靠近雕塑，进入约 1 米范围后可参与多人感应。';approachBear.textContent='模拟靠近云朵熊'}}
+    stores.forEach(s=>{const b=document.createElement('button');b.type='button';b.className=`store-pin ${s.type}`;b.style.left=`${Math.min(94,s.x)}%`;b.style.top=`${Math.min(89,s.y)}%`;b.innerHTML=`<span>${s.type==='food'?'餐':s.type==='service'?'服':s.type==='art'?'艺':'店'}</span>`;b.addEventListener('click',()=>{app.querySelectorAll('.store-pin').forEach(x=>x.classList.remove('active'));app.querySelector('#sculpture-marker').classList.remove('selected');b.classList.add('active');hideMapPanels();storeDetail.classList.add('visible');info.innerHTML=`<p class="font-medium">${s.name}</p><p class="mt-1 text-sm">位于朗悦公园里 · ${s.floor}F · 已同步店铺实时服务信息</p>`;floorTitle.textContent=`${s.name} · ${s.floor}F`;app.querySelectorAll('.floor').forEach(f=>f.classList.toggle('active',Number(f.dataset.floor)===s.floor));queueValue.textContent=s.queue;waitValue.textContent=s.wait;discountValue.textContent=s.discount;menuList.innerHTML=s.menu.map(item=>`<div class="menu-row"><span>${item[0]}</span><strong>${item[1]}</strong></div>`).join('');offerCallout.innerHTML=`<p class="font-medium">当前优惠</p><p class="mt-1 text-sm">${s.offer}</p>`;discountTag.textContent=s.discount;discountTag.style.left=`${Math.min(78,s.x+3)}%`;discountTag.style.top=`${Math.max(3,s.y-8)}%`;discountTag.classList.add('visible')});map.appendChild(b)});
+    app.querySelector('#sculpture-marker').addEventListener('click',e=>{app.querySelectorAll('.store-pin').forEach(x=>x.classList.remove('active'));e.currentTarget.classList.add('selected');hideMapPanels();proximityPanel.classList.add('visible');bearDistance=6;approachBear.disabled=false;updateDistance();info.innerHTML='<p class="font-medium">云朵熊公共雕塑 · 距离感应节点</p><p class="mt-1 text-sm">当前位置距雕塑约 6 米。请模拟靠近，进入约 1 米范围后开放多人感应入口。</p>';floorTitle.textContent='公共空间节点 · 无楼层';app.querySelectorAll('.floor').forEach(f=>f.classList.remove('active'))});
+    approachBear.addEventListener('click',()=>{if(bearDistance<=1)return;bearDistance=Math.max(.9,bearDistance-(bearDistance>3?1.6:bearDistance>1.6?1.1:.7));updateDistance();info.innerHTML=`<p class="font-medium">正在靠近云朵熊</p><p class="mt-1 text-sm">实时距离约 ${bearDistance.toFixed(1)} 米。${bearDistance<=1?'已进入雕塑感应范围。':'多人感应入口尚未开放。'}</p>`});
+    let detectedPeople=0,dailyAwakened=false,waking=false,myPresenceAdded=false;const wakeStage=app.querySelector('#wake-stage'),wakeBtn=app.querySelector('#wake-btn'),wakeStatus=app.querySelector('#wake-status'),peopleStatus=app.querySelector('#people-status'),requirement=app.querySelector('#requirement'),dailyState=app.querySelector('#daily-state'),detectUser=app.querySelector('#detect-user'),invitePassersby=app.querySelector('#invite-passersby'),recordWake=app.querySelector('#record-wake'),recordSculptureEnergy=app.querySelector('#record-sculpture-energy');
+    function setSteps(){const s1=app.querySelector('#step-1'),s2=app.querySelector('#step-2'),s3=app.querySelector('#step-3');[s1,s2,s3].forEach(s=>s.classList.remove('done','current'));if(detectedPeople===0)s1.classList.add('current');else if(detectedPeople===1){s1.classList.add('done');s2.classList.add('current')}else{s1.classList.add('done');s2.classList.add('done');s3.classList.add('current')}}
+    function updateWakeControls(){peopleStatus.textContent=`当前感应到 ${detectedPeople} 人`;requirement.textContent=detectedPeople>=2?'已达到唤醒条件':`还需要 ${2-detectedPeople} 人`;if(dailyAwakened){wakeBtn.disabled=true;wakeBtn.textContent='今日已完成唤醒';detectUser.disabled=true;invitePassersby.disabled=true;dailyState.textContent='今日已唤醒'}else if(detectedPeople>=2){wakeBtn.disabled=false;wakeBtn.textContent='共同确认并唤醒雕塑';wakeStatus.textContent='人数条件已经满足，请所有参与者共同确认。'}else{wakeBtn.disabled=true;wakeBtn.textContent='人数不足，暂不可唤醒';detectUser.disabled=myPresenceAdded}setSteps()}
+    function addDetectedPerson(source){if(dailyAwakened||waking||detectedPeople>=5||source==='me'&&myPresenceAdded)return;const person=app.querySelector(`#person-${detectedPeople+1}`);person.classList.add('detecting');person.textContent='感应中';wakeStatus.textContent=source==='passerby'?'已发出附近协助邀请，一位路人正在靠近……':'正在确认你是否进入雕塑一米感应范围……';detectUser.disabled=true;invitePassersby.disabled=true;setTimeout(()=>{person.classList.remove('detecting');person.classList.add('detected');person.textContent=source==='passerby'?'路人':'我';detectedPeople++;if(source==='me')myPresenceAdded=true;wakeStatus.textContent=detectedPeople===1?'你已进入感应范围，还需要一位参与者。可邀请附近路人帮助。':`第 ${detectedPeople} 位参与者感应成功。`;invitePassersby.disabled=false;updateWakeControls()},1100)}
+    detectUser.addEventListener('click',()=>addDetectedPerson('me'));invitePassersby.addEventListener('click',()=>addDetectedPerson('passerby'));
+    wakeBtn.addEventListener('click',()=>{if(dailyAwakened||detectedPeople<2||waking)return;waking=true;wakeBtn.disabled=true;wakeBtn.textContent='正在同步所有参与者…';wakeStatus.textContent='参与者确认完成，感应能量正在聚集到中央宠物球。';wakeStage.classList.add('waking');setTimeout(()=>{wakeStage.classList.add('reveal');wakeStatus.textContent='成年伙伴的模糊轮廓短暂显现。'},1700);setTimeout(()=>{wakeStage.classList.remove('waking','reveal');wakeStage.classList.add('rewarded');dailyAwakened=true;waking=false;dailyState.textContent='今日已唤醒';wakeStatus.textContent='今日共同唤醒成功，获得成长值 +5。该雕塑明日可再次参与。';recordWake.textContent='1 次';recordSculptureEnergy.textContent='+5';energy=Math.min(500,energy+5);energyText.textContent=`${energy} / 500`;energyBar.style.width=`${energy/5}%`;updateWakeControls();setTimeout(()=>wakeStage.classList.remove('rewarded'),1900)},2800)});
+    app.querySelector('#reset-demo').addEventListener('click',()=>{detectedPeople=0;dailyAwakened=false;waking=false;myPresenceAdded=false;wakeStage.classList.remove('waking','reveal','rewarded');for(let i=1;i<=5;i++){const p=app.querySelector(`#person-${i}`);p.classList.remove('detected','detecting');p.textContent='等待'}dailyState.textContent='今日未唤醒';wakeStatus.textContent='请先点击“我靠近”，进入雕塑感应范围。';recordWake.textContent='0 次';recordSculptureEnergy.textContent='0';detectUser.disabled=false;invitePassersby.disabled=false;updateWakeControls()});updateWakeControls();
+
+    /* ---- 复刻自 index：记录页月历渲染 ---- */
+    const calGrid=app.querySelector('#calGrid');
+    if(calGrid){
+      const activityColors=['#34C77B','#FFC93C','#FF6FA0','#4FA6FF'];
+      const activeDays=new Set([2,3,6,9,13,15,20,24]);
+      for(let i=0;i<2;i++) calGrid.appendChild(document.createElement('div'));
+      for(let d=1; d<=31; d++){
+        const cell=document.createElement('div');
+        cell.className='cal-cell';
+        const num=document.createElement('div');
+        num.className='cal-num';
+        num.textContent=d;
+        cell.appendChild(num);
+        if(activeDays.has(d)){
+          cell.classList.add('has-activity');
+          const dot=document.createElement('div');
+          dot.className='cal-dot';
+          dot.style.background=activityColors[d%activityColors.length];
+          cell.appendChild(dot);
+        }
+        calGrid.appendChild(cell);
+      }
+    }
+
+    /* ---- 复刻自 index：伙伴页"附近正在发生"跳转交互 ---- */
+    const nearbyWakeTag=app.querySelector('#nearby-wake-tag');
+    if(nearbyWakeTag) nearbyWakeTag.addEventListener('click',()=>{showPage('map');app.querySelector('#sculpture-marker').click();});
+    const nearbyMapTag=app.querySelector('#nearby-map-tag');
+    if(nearbyMapTag) nearbyMapTag.addEventListener('click',()=>showPage('map'));
+  </script>
+</div>
+</body>
+</html>
